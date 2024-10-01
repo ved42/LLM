@@ -1,43 +1,52 @@
-import streamlit as st
 from dotenv import load_dotenv
-from langchain.prompts import PromptTemplate
-from langchain_groq import ChatGroq
 import os
+from langchain_groq import ChatGroq
+from langchain.prompts import PromptTemplate
+import streamlit as st
 
 # Load environment variables
 load_dotenv()
-
-# Initialize API key for Groq
 api_key = os.getenv("GROQ_API_KEY")
 
 # Initialize the model
-llm = ChatGroq(api_key=api_key, model="Gemma-7b-It")
+llm = ChatGroq(groq_api_key=api_key, model="Gemma-7b-It")
 
-# Define the prompt template
-temp = """ 
-You are a helpful assistant, generating the code in the mentioned language.
-Code: {code}
-Language: {language}
+# Define the template and code_prompt
+code_prompt = """
+You are a Python code generator. Based on the given description, give me the code,please generate Python code:
+Description: {text}
+Python Code:
 """
-pro = PromptTemplate(input_variables=['code', 'language'], template=temp)
 
-# Streamlit UI components
-st.title("Code Generator")
+# Create a PromptTemplate object
+code_template = PromptTemplate(input_variables=['text'], template=code_prompt)
 
-# User inputs for code generation
-code_prompt = st.text_input("Enter the code prompt")
-language_choice = st.text_input("Enter the programming language")
+# Streamlit UI
+st.title("Python Code Generator")
+st.write("Describe the code you'd like to generate:")
+
+# Text input from user
+text_input = st.text_input("Enter the description of the code:", "")
 
 # Button to generate code
-if st.button("Generate Code"):
-    # Format the prompt
-    response = pro.format(code=code_prompt, language=language_choice)
+if st.button("Generate Python Code"):
+    if text_input.strip():
+        # Generate the formatted prompt
+        final_prompt = code_template.format(text=text_input)
+        
+        # Print the prompt (for debugging purposes)
+        st.text(f"Prompt sent to model:\n{final_prompt}")
 
-    # Get the response from the model
-    with st.spinner("Generating code..."):
-        final_output = llm.invoke(response)
-        code_output = final_output.content
+        # Assuming llm.invoke() gives you the response as an AIMessage object
+        response = llm.invoke(final_prompt)
 
-    # Display the generated code
-    st.subheader(f"Generated Code in {language_choice}:")
-    st.code(code_output, language=language_choice.lower())
+        # Access the 'content' attribute of the response which contains the generated text
+        generated_code = response.content
+
+        # Replace escaped newlines with real ones to properly format the code
+        formatted_response = generated_code.replace('\\n', '\n')
+
+        # Display the generated code
+        st.code(formatted_response, language="python")
+    else:
+        st.warning("Please provide a description to generate the Python code.")
